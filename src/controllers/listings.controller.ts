@@ -3,11 +3,9 @@ import prisma from "../config/prisma";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { getCache, setCache, deleteCacheByPrefix } from "../config/cache";
 
-// GET /listings
 export const getAllListings = async (req: Request, res: Response) => {
   try {
     const { page, limit, location, type, maxPrice, sortBy, order } = req.query;
-
     const pageNum = parseInt(page as string) || 1;
     const limitNum = parseInt(limit as string) || 10;
     const skip = (pageNum - 1) * limitNum;
@@ -26,9 +24,7 @@ export const getAllListings = async (req: Request, res: Response) => {
       prisma.listing.findMany({
         where,
         include: { host: { select: { name: true, avatar: true } } },
-        orderBy: sortBy
-          ? { [sortBy as string]: order === "desc" ? "desc" : "asc" }
-          : { createdAt: "desc" },
+        orderBy: sortBy ? { [sortBy as string]: order === "desc" ? "desc" : "asc" } : { createdAt: "desc" },
         skip,
         take: limitNum,
       }),
@@ -43,15 +39,14 @@ export const getAllListings = async (req: Request, res: Response) => {
     setCache(cacheKey, result, 60);
     res.json(result);
   } catch (error) {
+    console.error("getAllListings error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// GET /listings/search
 export const searchListings = async (req: Request, res: Response) => {
   try {
     const { location, type, minPrice, maxPrice, guests, page, limit } = req.query;
-
     const pageNum = parseInt(page as string) || 1;
     const limitNum = parseInt(limit as string) || 10;
     const skip = (pageNum - 1) * limitNum;
@@ -84,11 +79,11 @@ export const searchListings = async (req: Request, res: Response) => {
       meta: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) },
     });
   } catch (error) {
+    console.error("searchListings error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// GET /listings/:id
 export const getListingById = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
@@ -101,11 +96,11 @@ export const getListingById = async (req: Request, res: Response) => {
     if (!listing) return res.status(404).json({ message: "Listing not found" });
     res.json(listing);
   } catch (error) {
+    console.error("getListingById error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// POST /listings
 export const createListing = async (req: AuthRequest, res: Response) => {
   try {
     const { title, description, location, pricePerNight, guests, type, amenities } = req.body;
@@ -115,22 +110,17 @@ export const createListing = async (req: AuthRequest, res: Response) => {
     }
 
     const listing = await prisma.listing.create({
-      data: {
-        title, description, location, pricePerNight,
-        guests, type, amenities,
-        hostId: req.userId!,
-        rating: req.body.rating,
-      },
+      data: { title, description, location, pricePerNight, guests, type, amenities, hostId: req.userId!, rating: req.body.rating },
     });
 
     deleteCacheByPrefix("listings:");
     res.status(201).json(listing);
   } catch (error) {
+    console.error("createListing error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// PUT /listings/:id
 export const updateListing = async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params.id as string;
@@ -143,15 +133,14 @@ export const updateListing = async (req: AuthRequest, res: Response) => {
     }
 
     const updated = await prisma.listing.update({ where: { id }, data: req.body });
-
     deleteCacheByPrefix("listings:");
     res.json(updated);
   } catch (error) {
+    console.error("updateListing error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// DELETE /listings/:id
 export const deleteListing = async (req: AuthRequest, res: Response) => {
   try {
     const id = req.params.id as string;
@@ -164,10 +153,10 @@ export const deleteListing = async (req: AuthRequest, res: Response) => {
     }
 
     await prisma.listing.delete({ where: { id } });
-
     deleteCacheByPrefix("listings:");
     res.status(204).send();
   } catch (error) {
+    console.error("deleteListing error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
