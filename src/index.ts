@@ -19,6 +19,9 @@ import { deprecateV1 } from "./middlewares/deprecation.middleware";
 const app = express();
 const PORT = Number(process.env["PORT"]) || 3000;
 
+// Trust proxy for Render
+app.set("trust proxy", 1);
+
 // Logging
 app.use(process.env["NODE_ENV"] === "production" ? morgan("combined") : morgan("dev"));
 
@@ -45,7 +48,7 @@ app.get("/health", (req: Request, res: Response) => {
 // API v1 routes
 app.use("/api/v1", deprecateV1, v1Router);
 
-// Legacy routes (backward compatibility)
+// Legacy routes
 app.use("/auth", authLimiter, authRouter);
 app.use("/users", authenticate, usersRouter);
 app.use("/", uploadRouter);
