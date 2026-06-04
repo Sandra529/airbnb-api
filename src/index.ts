@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import compression from "compression";
+import cors from "cors";
 import morgan from "morgan";
 import authRouter from "./routes/auth.routes";
 import usersRouter from "./routes/users.routes";
@@ -19,36 +20,32 @@ import { deprecateV1 } from "./middlewares/deprecation.middleware";
 const app = express();
 const PORT = Number(process.env["PORT"]) || 3000;
 
-// Trust proxy for Render
 app.set("trust proxy", 1);
 
-// Logging
-app.use(process.env["NODE_ENV"] === "production" ? morgan("combined") : morgan("dev"));
+app.use(morgan(process.env["NODE_ENV"] === "production" ? "combined" : "dev"));
 
-// Compression
 app.use(compression());
 
-// Global rate limiter
-app.use(globalLimiter);
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://airbnb-api-d2js.onrender.com",
+  ],
+  credentials: true,
+}));
 
+app.use(globalLimiter);
 app.use(express.json());
 
-// Swagger docs
 setupSwagger(app);
 
-// Health check
 app.get("/health", (req: Request, res: Response) => {
-  res.json({
-    status: "ok",
-    uptime: process.uptime(),
-    timestamp: new Date(),
-  });
+  res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date() });
 });
 
-// API v1 routes
 app.use("/api/v1", deprecateV1, v1Router);
 
-// Legacy routes
 app.use("/auth", authLimiter, authRouter);
 app.use("/users", authenticate, usersRouter);
 app.use("/", uploadRouter);
@@ -57,12 +54,10 @@ app.use("/bookings", bookingsRouter);
 app.use("/", reviewsRouter);
 app.use("/", statsRouter);
 
-// 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-// Global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ error: "Something went wrong" });
